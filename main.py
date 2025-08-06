@@ -10,13 +10,14 @@ owner: Steve Rahardjo
 work_in: Data Analytics (Intern at SynergyXYZ)
 hobbies: History, Watching youtube, Building agentic tools
 """
+
 # Instantiate your LLM client
 openai = OpenAIClient("o_ai_client1", "", "gpt-4o")
 
 # Instantiate the tool
 gcal = GcalendarConnector("token.json")
 
-# Define a tool function and register it using @tooling decorator
+# Define the tool function and register it
 @tooling(
     tooling_id="001",
     tooling_name="calendar_fetcher",
@@ -39,16 +40,13 @@ def calendar_fetch_fn(inputs: dict):
     end = inputs["end"]
     return gcal.fetch_calendarPoint(start, end)
 
-
-
-# Create the PromptConstructor using BaseTooling
+# Create the PromptConstructor
 schedule_constructor = PromptConstructor(
     task_description="Fetch all the schedule I have within a date range",
     input_schema=["start", "end"],
     output_schema="List of meetings with main subjects and day",
     constraints="",
     tools_allowed=[calendar_fetch_fn.tool],
-    type="task",
     system_prompt=main_background
 )
 
@@ -56,7 +54,7 @@ schedule_constructor = PromptConstructor(
 cal_retriever = Agent(
     agent_id="cal_retriever",
     agent_desc="Agent using the Google Calendar tool to retrieve schedule information.",
-   llm_inst=openai,
+    llm_inst=openai,
     signature=schedule_constructor,
     memory=None
 )
@@ -65,3 +63,4 @@ cal_retriever = Agent(
 if __name__ == "__main__":
     result = cal_retriever.run("Give me all of the schedule last semester in Monash", 0)
     print(result)
+

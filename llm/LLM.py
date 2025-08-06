@@ -55,16 +55,7 @@ class OpenAIClient(LanguageModel):
         if not self.api_key:
             raise EnvironmentError("Missing OpenAI API key")
         self.client = OpenAI(api_key=self.api_key)
-
-    def get_result(self, semantic:PromptConstructor, temp: float = 0.6) -> str:
-        messages = semantic.format_openai()
-        tools = semantic.inject_tools()
-        if tools is not None:
-            response = self.client.responses.create(model=self.decoder, input=messages, temperature=temp, tools = tools)
-        else:
-            response = self.client.responses.create(model=self.decoder, input=messages, temperature=temp)   
-        return response
-    
+  
     def get_embeddings(self, semantic: Union[str, List[Dict[str, str]]]) -> List[float]:
         response = self.client.embeddings.create(
             model=self.encoder,
