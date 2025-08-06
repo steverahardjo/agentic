@@ -1,49 +1,22 @@
 from llm.LLM import LanguageModel
 from agentic.AgentMemory import MemoryEngine
 from agentic.prompt_constructor import PromptConstructor
-from typing import List
-from agentic.Tooling import BaseTooling
 import json
+from typing import List, Callable
 
 class Agent:
-    """
-    Represents an autonomous agent that interacts with a language model using 
-    memory, prompt engineering, and optional tooling.
-
-    Attributes:
-        agent_desc (str): A textual description of the agent's role or purpose.
-        llm_inst (LanguageModel): The language model instance used for text generation.
-        signature (PromptConstructor): An instance to construct and fill prompts.
-        memory (MemoryEngine): The memory system to retrieve contextual data.
-        prompt (str): The current prompt string, constructed based on memory and input.
-    """
-
     def __init__(
         self,
         agent_id: str,
         agent_desc: str,
-        llm_inst: LanguageModel,
         signature: PromptConstructor,
-        memory: MemoryEngine = None,
-        tools_allowed = List[BaseTooling]
+        tools = List[Callable] 
     ):
-        """
-        Initializes the Agent with its configuration and constructs an initial prompt.
-
-        Args:
-            agent_id (str): Unique identifier for the agent (used for memory operations).
-            agent_desc (str): Description of the agent's purpose.
-            llm_inst (LanguageModel): A language model interface for generating responses.
-            signature (PromptConstructor): PromptConstructor instance for prompt formatting.
-            memory (MemoryEngine): MemoryEngine instance for storing and retrieving past context.
-        """
         self.agent_id = agent_id
-        self.agent_desc = agent_desc
-        self.llm_inst = llm_inst
+        self.agent_desc = agent_desc,
+        self.llm_inst:LanguageModel = None
         self.signature = signature
-        self.tools_allowed = tools_allowed
-        self.signature.get_toolList(tools_allowed)
-        self.memory = memory
+        self.memory = ""
         self.prompt = self.signature.construct_prompt()
     def run(self, user_input: str, temp:int = 0.6):
         """
@@ -71,4 +44,10 @@ class Agent:
         parsed = json.loads(call_result)
         tool_name = parsed["tool_name"]
         tool = next((t for t in self.tools_allowed if t.name == tool_name))
-        return tool.run(call_result)        
+        return tool.run(call_result)
+
+    def configure(self, model_inst = LanguageModel)->None:
+        self.llm_inst = model_inst
+
+    def attach_memory(self, memory_engine:MemoryEngine):
+        self.memory = memory_engine
