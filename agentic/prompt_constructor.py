@@ -1,5 +1,6 @@
 from typing import Callable, Dict, Any, get_type_hints
 from pydantic import BaseModel, Field
+from jinja2 import Template
 
 
 class PromptField(BaseModel):
@@ -9,10 +10,9 @@ class PromptField(BaseModel):
 
 
 class PromptConstructor(BaseModel):
+    system_template = Template()
     prompt_name: str
     process_type: str
-    input_fields: Dict[str, PromptField] = {}
-    output_fields: Dict[str, PromptField] = {}
     tools_expl_str: str = ""
 
     def parse_func(self, func: Callable, input_descs: Dict[str, str] = {}, output_descs: Dict[str, str] = {}):
@@ -34,11 +34,5 @@ class PromptConstructor(BaseModel):
                     desc=input_descs.get(name, "")
                 )
 
-    def summary(self):
-        return {
-            "prompt_name": self.prompt_name,
-            "type": self.process_type,
-            "inputs": {k: v.dict() for k, v in self.input_fields.items()},
-            "outputs": {k: v.dict() for k, v in self.output_fields.items()},
-        }
-          
+    def giveInput(self, name:str, desc:str = ""):
+        self.template.add

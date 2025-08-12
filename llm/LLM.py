@@ -11,6 +11,7 @@ from utils.logging import LLMLogOutput
 from utils.logging import LoggingStream
 from agentic.prompt_constructor import PromptConstructor
 from agentic.tools.code_runner import CodeRunner
+import ollama
 
 # Load environment variables
 load_dotenv(override=True)
@@ -18,9 +19,6 @@ load_dotenv(override=True)
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-code_runner = CodeRunner(3, "string")
-
 
 class LanguageModel(ABC):
     def __init__(self, llm_inst_id: str, decoder_model: str, encoder_model: str):
@@ -170,3 +168,12 @@ class OpenRouterClient(LanguageModel):
             out_token=0,
             app_name="llm_router"
         )
+class OllamaClient(LanguageModel):
+    def __init__(self, llm_inst_id: str, encoder_model: str, decoder_model: str):
+        super().__init__(llm_inst_id, decoder_model, encoder_model)
+
+
+    def get_result(self, semantic: PromptConstructor, temp: float = 0.6) -> str:
+        injection = ""
+        reply = ollama.chat(model = self.decoder_model, messages=injection)
+        return reply
