@@ -1,23 +1,15 @@
-from abc import ABC, abstractmethod
 from typing import Union, List, Dict
 from datetime import datetime
-from dotenv import load_dotenv
 import os
 import logging
 import requests
 from openai import OpenAI
 from together import Together
-from utils.logging import LLMLogOutput
-from utils.logging import LoggingStream
-from agentic.prompt_constructor import PromptConstructor
-from agentic.tools.code_runner import CodeRunner
 import ollama
+from abc import ABC, abstractmethod
+from utils.logging import LoggingStream
 
-# Load environment variables
-load_dotenv(override=True)
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class LanguageModel(ABC):
@@ -27,7 +19,7 @@ class LanguageModel(ABC):
         self.encoder = encoder_model
 
     @abstractmethod
-    def get_result(self, semantic: PromptConstructor, temp: float = 0.6) -> str:
+    def get_result(self, semantic: Union[str, Dict[str, str]], temp: float = 0.6) -> str:
         pass
 
     def get_embeddings(self, semantic: Union[List[Dict[str, str]], str]):
@@ -43,8 +35,19 @@ class LanguageModel(ABC):
     def set_decoder(self, decoder_model: str) -> None:
         self.decoder = decoder_model
 
-    def get_model_series(self):
+    def get_model_series(self) -> str:
         return self.decoder
+
+# Utility to normalize input prompt into list of messages format
+def normalize_prompt(semantic: Union[str, Dict[str, str], List[Dict[str, str]]]) -> List[Dict[str, str]]:
+    if isinstance(semantic, str):
+        return [{"role": "user", "content": semantic}]
+    elif isinstance(semantic, dict):
+        return [semantic]
+    elif isinstance(semantic, list):
+        return semantic
+    else:
+        raise ValueError("semantic must be str, dict, or list of dicts")
 
 class OpenAIClient(LanguageModel):
     def __init__(self, llm_inst_id: str, encoder_model: str, decoder_model: str, api_key: str = None):
@@ -53,7 +56,19 @@ class OpenAIClient(LanguageModel):
         if not self.api_key:
             raise EnvironmentError("Missing OpenAI API key")
         self.client = OpenAI(api_key=self.api_key)
-  
+
+    def get_result(self, semantic: Union[str, Dict[str, str], List[Dict[str, str]]], temp: float = 0.6) -> str:
+        messages = normalize_prompt(semantic)
+        response = self.client.chat.completions.create(
+            model=self.decoder,
+            messages=messages,
+            temperature=temp
+        )
+        result = response.choices[0].message.content
+        log = self._parse_log(messages, result, response.usage, self.decoder)
+        #LoggingStream.log_json(log.dict())
+        return result
+
     def get_embeddings(self, semantic: Union[str, List[Dict[str, str]]]) -> List[float]:
         response = self.client.embeddings.create(
             model=self.encoder,
@@ -70,13 +85,14 @@ class OpenAIClient(LanguageModel):
     def get_model_series(self) -> str:
         return "OpenAI"
 
-    def _parse_log(self, messages, result, usage, model: str) -> LLMLogOutput:
+    def _parse_log(self, messages, result, usage, model: str):
+        from utils.logging import LLMLogOutput
         return LLMLogOutput(
             provider_id="openai",
-            llm_instructions=messages[0]["content"],
+            llm_instructions=messages[0]["content"] if messages else "",
             model=model,
             date=datetime.now(),
-            input=messages[0]["content"],
+            input=messages[0]["content"] if messages else "",
             inp_token=usage.prompt_tokens,
             response=result,
             out_token=usage.completion_tokens,
@@ -91,12 +107,12 @@ class TogetherClient(LanguageModel):
             raise EnvironmentError("Missing Together API key.")
         self.client = Together(api_key=self.api_key)
 
-    def get_result(self, semantic: PromptConstructor, temp: float = 0.6) -> str:
-        messages = semantic
+    def get_result(self, semantic: Union[str, Dict[str, str], List[Dict[str, str]]], temp: float = 0.6) -> str:
+        messages = normalize_prompt(semantic)
         response = self.client.chat.completions.create(model=self.decoder, messages=messages, temperature=temp)
         result = response.choices[0].message.content
         log = self._parse_log(messages, result, response.usage, self.decoder)
-        LoggingStream.log_json(log.dict())
+        #LoggingStream.log_json(log.dict())
         return result
 
     def get_embeddings(self, semantic: Union[str, List[Dict[str, str]]]) -> List[float]:
@@ -111,13 +127,14 @@ class TogetherClient(LanguageModel):
     def get_model_series(self) -> str:
         return "TogetherAI"
 
-    def _parse_log(self, messages, result, usage, model: str) -> LLMLogOutput:
+    def _parse_log(self, messages, result, usage, model: str):
+        from utils.logging import LLMLogOutput
         return LLMLogOutput(
             provider_id="together",
-            llm_instructions=messages[0]["content"],
+            llm_instructions=messages[0]["content"] if messages else "",
             model=model,
             date=datetime.now(),
-            input=messages[0]["content"],
+            input=messages[0]["content"] if messages else "",
             inp_token=usage.prompt_tokens,
             response=result,
             out_token=usage.completion_tokens,
@@ -139,41 +156,69 @@ class OpenRouterClient(LanguageModel):
             "Content-Type": "application/json"
         }
 
-    def get_result(self, semantic: PromptConstructor, temp: float = 0.6) -> str:
-        messages = semantic
+    def get_result(self, semantic: Union[str, Dict[str, str], List[Dict[str, str]]], temp: float = 0.6) -> str:
+        messages = normalize_prompt(semantic)
         payload = {"model": self.decoder, "messages": messages, "temperature": temp}
 
         res = requests.post(self.url, headers=self.header, json=payload)
         res.raise_for_status()
         result_text = res.json()["choices"][0]["message"]["content"]
         log = self._parse_log(messages, result_text, self.decoder)
-        LoggingStream.log_json(log.dict())
+        #LoggingStream.log_json(log.dict())
         return result_text
 
-    def get_embedding_size(self) -> int:
+    def get_embeddings(self, semantic: Union[str, List[Dict[str, str]]]):
         raise NotImplementedError("Embedding not supported for OpenRouter.")
+
+    def get_embedding_size(self) -> int:
+        raise NotImplementedError("Embedding size not supported for OpenRouter.")
 
     def get_model_series(self) -> str:
         return "OpenRouter"
 
-    def _parse_log(self, messages, result, model: str) -> LLMLogOutput:
+    def _parse_log(self, messages, result, model: str):
+        from utils.logging import LLMLogOutput
         return LLMLogOutput(
             provider_id="openrouter",
-            llm_instructions=messages[0]["content"],
+            llm_instructions=messages[0]["content"] if messages else "",
             model=model,
             date=datetime.now(),
-            input=messages[0]["content"],
+            input=messages[0]["content"] if messages else "",
             inp_token=0,
             response=result,
             out_token=0,
             app_name="llm_router"
         )
+
 class OllamaClient(LanguageModel):
     def __init__(self, llm_inst_id: str, encoder_model: str, decoder_model: str):
         super().__init__(llm_inst_id, decoder_model, encoder_model)
 
-
-    def get_result(self, semantic: PromptConstructor, temp: float = 0.6) -> str:
-        injection = ""
-        reply = ollama.chat(model = self.decoder_model, messages=injection)
+    def get_result(self, semantic: Union[str, Dict[str, str], List[Dict[str, str]]], temp: float = 0.6) -> str:
+        messages = normalize_prompt(semantic)
+        reply = ollama.chat(model=self.decoder, messages=messages)
+        # Assuming reply is string
         return reply
+
+    def get_embeddings(self, semantic: Union[str, List[Dict[str, str]]]):
+        raise NotImplementedError("Embedding not implemented for Ollama.")
+
+    def get_embedding_size(self) -> int:
+        raise NotImplementedError("Embedding size not supported for Ollama.")
+
+    def get_model_series(self) -> str:
+        return "Ollama"
+
+    def _parse_log(self, messages, result, model: str):
+        from utils.logging import LLMLogOutput
+        return LLMLogOutput(
+            provider_id="ollama",
+            llm_instructions=messages[0]["content"] if messages else "",
+            model=model,
+            date=datetime.now(),
+            input=messages[0]["content"] if messages else "",
+            inp_token=0,
+            response=result,
+            out_token=0,
+            app_name="llm_router"
+        )

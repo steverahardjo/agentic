@@ -2,14 +2,12 @@ import subprocess
 
 
 class CodeRunner:
-    def __init__(self, timeout:int, render_mode="file"):
+    def __init__(self, timeout:int):
         self.timeout=timeout
-        self.render_mode = render_mode
-        self.render_mode = render_mode
-
+        
     def run_python(self, code_snippet:str):
         return exec(code_snippet)
-
+    
     def run_shell(self, command:str)->str:
         try:
             result = subprocess.run(

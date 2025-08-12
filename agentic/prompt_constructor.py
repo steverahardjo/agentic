@@ -1,7 +1,7 @@
-from typing import Callable, Dict, Any, get_type_hints
+from typing import Callable, Dict, Any
 from pydantic import BaseModel, Field
 from jinja2 import Template
-
+import inspect
 
 class PromptField(BaseModel):
     name: str
@@ -10,9 +10,16 @@ class PromptField(BaseModel):
 
 
 class PromptConstructor(BaseModel):
+    """
+    Basic Constructor to build prompt programmatically, first we declared the name and type (tagger)
+    Input and Output command are build **incr** through functions and add as a (name, type, desc)
+    This can be: a command, an example, etc
+    ----------------------------------------------
+    TODO:Extended to common usage (Classification, reACT, CoT etc)
+    INSPIRED BY DSPY'S SIGNATURE Prompting Principle
+    """
     prompt_name: str
     process_type: str
-    tools_expl_str: str = ""
 
     # Store input/output fields as dict of PromptField, initialized empty
     input_fields: Dict[str, PromptField] = Field(default_factory=dict)
@@ -21,27 +28,23 @@ class PromptConstructor(BaseModel):
     # You can keep a template string that you build incrementally
     template_str: str = ""
 
-    def parse_func(self, func: Callable, input_descs: Dict[str, str] = {}, output_descs: Dict[str, str] = {}):
-        type_hints = get_type_hints(func)
-        # Clear previous fields
+    def parse_func(self, func: Callable):
+        sig = inspect.signature(func)
         self.input_fields = {}
         self.output_fields = {}
 
-        for name, typ in type_hints.items():
-            if name == "return":
-                # Use 'result' as output field name or you can customize
-                output_name = "result"
-                self.output_fields[output_name] = PromptField(
-                    name=output_name,
-                    type=typ,
-                    desc=output_descs.get(output_name, "")
-                )
-            else:
-                self.input_fields[name] = PromptField(
-                    name=name,
-                    type=typ,
-                    desc=input_descs.get(name, "")
-                )
+            # Inputs
+        for name, param in sig.parameters.items():
+            annotation = param.annotation
+            if annotation is inspect._empty:
+                annotation = str
+            self.input_fields[name] = PromptField(name=name, type=annotation)
+
+            # Output
+        return_annotation = sig.return_annotation
+        if return_annotation is inspect._empty:
+            return_annotation = str
+        self.output_fields["result"] = PromptField(name="result", type=return_annotation)
 
     def giveInput(self, name: str, desc: str = ""):
         # Add or update input field description, default type is str
@@ -101,8 +104,7 @@ class PromptConstructor(BaseModel):
         </html>
         """
         template = Template(template_str)
-        return template.render(image_url=file_path) 
-
+        return template.render(image_url=file_path)
 
 # Example usage:
 
