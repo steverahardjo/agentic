@@ -11,4 +11,3 @@ wheels/
 .env
 token.json
 client_secret.json
-main.py
