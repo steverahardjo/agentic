@@ -15,17 +15,12 @@ class BaseAgent:
         self.memory = memory
         self.funcs=funcs
         self.retries=retries
-
-        self.func_map = self._create_func_map([
-            self.agent_webscraping,
-            self.another_func,
-        ])
-
-    def _create_func_map(self, funcs):
+        self.func_map = self._create_func_map(funcs)
+        
+    def _create_func_map(self, funcs:List[Callable]):
         """
         Creates a dictionary mapping function names (as strings) to callables.
         """
-
         return {f.__name__: f for f in funcs}
         
     def run(self, user_input: str, llm_inst: LanguageModel):
@@ -45,17 +40,21 @@ class BaseAgent:
         # Call the language model
         res = llm_inst.get_result(package)
         res = json.loads(res)
-        func_name = res.get("func_name")  # safer than res["func_name"]
+        func_name = res.get("func_name")
         params = res.get("params", [])
         print(func_name, params)
-        return self.run_selected_func(self.func_map["name"], params)
+        return self.run_selected_func(self.func_map[func_name], params)
          
     def run_selected_func(self, func: Callable, params:List):
         """
         Run a specific function with the provided arguments.
         """
-        f = func(*params)
-        return runner.run_python(f)
+        if func is not runner.run_python:
+            f = func(*params)
+            return runner.run_python(f)
+        else:
+            print(params)
+            return runner.run_python(params[0])
         
 if __name__ == "__main__":
     def agent_webscraping(url: str, max_pages: int = 1) -> str:

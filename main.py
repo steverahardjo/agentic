@@ -23,7 +23,7 @@ if __name__ == "__main__":
         name="WebScraperAgent",
         description="An agent that scrapes web content using provided tools.",
         prompt=pc,
-        funcs=[agent_webscraping, addition]
+        funcs=[agent_webscraping, addition, coder.run_python]
     )
-    res=webscraper.run("Who write this newspaper headline: https://mitchellh.com/writing/ghostty-subsystem-maintainers", oai)
+    res=webscraper.run("who is this person in 100 words: https://en.wikipedia.org/wiki/Wong_Kar-wai", oai)
     print(res)

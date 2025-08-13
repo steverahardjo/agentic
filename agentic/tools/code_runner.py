@@ -6,7 +6,10 @@ class CodeRunner:
         self.timeout=timeout
         
     def run_python(self, code_snippet:str):
-        return exec(code_snippet)
+        namespace={}
+        print(code_snippet)
+        exec(code_snippet, namespace)
+        return namespace
     
     def run_shell(self, command:str)->str:
         try:
