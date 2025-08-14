@@ -15,15 +15,15 @@ if __name__ == "__main__":
         return x+y
     pc = PromptConstructor(
         prompt_desc="Use only ONE tool to process the given link and return results",
-        process_type="WebScrapingTask",
-        prompt_name="WebScraperPrompt"
+        process_type="CodingTask",
+        prompt_name="Coding task"
     )
 
     webscraper=BaseAgent(
-        name="WebScraperAgent",
-        description="An agent that scrapes web content using provided tools.",
+        name="CodingTask",
+        description="An agent to write and run coding task",
         prompt=pc,
         funcs=[agent_webscraping, addition, coder.run_python]
     )
-    res=webscraper.run("who is this person in 100 words: https://en.wikipedia.org/wiki/Wong_Kar-wai", oai)
+    res=webscraper.run("write me a solve and test cases runned of palindrome longest substring", oai)
     print(res)

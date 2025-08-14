@@ -76,7 +76,7 @@ class PromptConstructor(BaseModel):
                 for f in tool.fields.values():
                     lines.append(f"   Param: {f.name} ({f.type.__name__})")
             lines.append("*"*50)
-            lines.append('Sample Output of tools: {"func_name": "function_name", "params": [param1, param2]}')
+            lines.append('Always output tool usage in this format: \n{"func_name": "function_name", "params": [param1, param2]}\nDo not output lists inside lists. Do not write function call syntax.')
 
         self.template_str = "\n".join(lines)
         return self.template_str

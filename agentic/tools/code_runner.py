@@ -1,15 +1,24 @@
 import subprocess
-
+import sys
+import io
+import re
 
 class CodeRunner:
     def __init__(self, timeout:int):
         self.timeout=timeout
         
     def run_python(self, code_snippet:str):
-        namespace={}
-        print(code_snippet)
-        exec(code_snippet, namespace)
-        return namespace
+        """
+        Tool function to create run using exec sandboxed
+        args:
+        - code_snippet = we want to  run
+        """
+        match = re.search(r"```python\s+(.*?)```", code_snippet, re.DOTALL)
+        if match:
+            res= match.group(1).strip()
+        return ""
+        return exec(res)
+    
     
     def run_shell(self, command:str)->str:
         try:
