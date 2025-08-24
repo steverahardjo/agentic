@@ -1,7 +1,12 @@
-
 import sqlparse
 from firebase_admin import credentials, firestore
 import firebase_admin
+
+from datetime import datetime
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+
 
 class DBConnector:
     def __init__(self, url_path: str, retries: int = 3):
@@ -44,13 +49,6 @@ class FirebaseConnector:
             ref.document(doc_id).set(data, merge=True)
         else:
             ref.add(data)
-
-
-from datetime import datetime
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-
 
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]

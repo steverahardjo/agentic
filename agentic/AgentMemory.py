@@ -70,7 +70,7 @@ class VectorMemory(MemoryEngine):
             query_vector=embeddings,
             limit=3
         )
-        return [hit.payload['text'] for hit in results]
+        return [hit.payload['text'] for hit in results] or ""
 
     def clear(self, agent_id: str) -> None:
         if not self.is_agent_allowed(agent_id):
@@ -92,7 +92,7 @@ class InMemory(MemoryEngine):
             raise PermissionError(f"Agent: {agent_id} not allowed to read from memory: {self.memory_id}")
         if not query:
             return list(self.memory_store.values())
-        return [value for value in self.memory_store.values() if query.lower() in value.lower()]
+        return [value for value in self.memory_store.values() if query.lower() in value.lower()] or ""
 
     def clear(self, agent_id: str) -> None:
         if not self.is_agent_allowed(agent_id):
@@ -125,7 +125,7 @@ class MdMemory(MemoryEngine):
         if not query:
             return [line.strip() for line in self.memory_log]
 
-        return [line.strip() for line in self.memory_log if query.lower() in line.lower()]
+        return [line.strip() for line in self.memory_log if query.lower() in line.lower()] or ""
 
     def clear(self, agent_id: str) -> None:
         if not self.is_agent_allowed(agent_id):
