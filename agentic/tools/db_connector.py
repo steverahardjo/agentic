@@ -66,6 +66,13 @@ class GcalendarConnector:
         self.service = build('calendar', "v3", credentials=cred)
 
     def fetch_calendarPoint(self,start_time:str, end_time:str, max_result:int = 5):
+        """
+        Represents an event query.
+        Attributes:
+        start_time (str): The event start time in RFC3339 format.
+        end_time (str): The event end time in RFC3339 format.
+        max_result (int): Maximum number of results to return.
+        """        
         events_result = (
             self.service.events()
             .list(

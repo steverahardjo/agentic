@@ -34,17 +34,16 @@ class PromptConstructor(BaseModel):
     Constructs structured prompts for LLMs with tools and input/output specifications.
 
     Attributes:
-        prompt_desc (str): General description of what the prompt should accomplish.
         prompt_name (str): Optional name for the prompt.
-        rules (str): Optional additional rules to include in the prompt.
+        prompt_command (str): Optional command string to include.
         input_fields (Dict[str, PromptField]): Fields the LLM expects as input.
         output_fields (Dict[str, PromptField]): Fields the LLM should output.
         tools (Dict[str, FunctionTool]): Tools (functions) available for the LLM.
         template_str (str): Cached template string.
     """
-    prompt_name: str = Field("DefaultPrompt", description = "A name for the prompt instance we created")
-    prompt_command:str = Field("No particular command", description = "added command to be added into builtin")
-    input_fields: Dict[str, PromptField] = Field(default_factory=dict, description = "  ")
+    prompt_name: str = Field("DefaultPrompt", description="A name for the prompt instance we created")
+    prompt_command: str = Field("No particular command", description="Added command to be added into builtin")
+    input_fields: Dict[str, PromptField] = Field(default_factory=dict, description="Input fields for the prompt")
     output_fields: Dict[str, PromptField] = Field(default_factory=dict)
     _tools: Dict[str, FunctionTool] = PrivateAttr(default_factory=dict)
     template_str: str = ""
@@ -55,16 +54,6 @@ class PromptConstructor(BaseModel):
 
         Each function parameter becomes an input field. The function's return type
         becomes an output field. The function's docstring is used as tool description.
-
-        Args:
-            func (Callable): Python function to register as a tool.
-
-        Example:
-            def add(a: int, b: int) -> int:
-                "Adds two numbers."
-                return a + b
-
-            pc.parse_func(add)
         """
         sig = inspect.signature(func)
         self.input_fields = {}
@@ -102,13 +91,19 @@ class PromptConstructor(BaseModel):
         
         # Inputs section
         lines.append("\nInputs:")
-        for f in self.input_fields.values():
-            lines.append(f"- {f.name} ({f.type.__name__}) - {f.desc}")
+        if self.input_fields:
+            for f in self.input_fields.values():
+                lines.append(f"- {f.name} ({f.type.__name__}) - {f.desc}")
+        else:
+            lines.append("- None")
 
         # Outputs section
         lines.append("\nOutputs:")
-        for f in self.output_fields.values():
-            lines.append(f"- {f.name} ({f.type.__name__}) - {f.desc}")
+        if self.output_fields:
+            for f in self.output_fields.values():
+                lines.append(f"- {f.name} ({f.type.__name__}) - {f.desc}")
+        else:
+            lines.append("- None")
 
         # Tools section
         if self._tools:
@@ -117,27 +112,32 @@ class PromptConstructor(BaseModel):
             lines.append("*"*50)
             for tool_name, tool in self._tools.items():
                 lines.append(f"[Tool] {tool_name} - {tool.description}")
+                
+                params_list = []
                 for f in tool.fields.values():
-                    lines.append(f"   Param: {f.name} ({f.type.__name__}) - {f.desc}")
+                    param_str = f"{f.name} ({f.type.__name__})"
+                    if f.desc:
+                        param_str += f" - {f.desc}"
+                    params_list.append(param_str)
+
+                if params_list:
+                    lines.append("  params: " + ", ".join(params_list))
+                else:
+                    lines.append("  params: None")
+
             lines.append("*"*50)
             lines.append(
                 'Always output tool usage in this format: \n'
                 '{"func_name": "function_name", "params": [param1, param2]}\n'
                 'Do not output lists inside lists. Do not write function call syntax.'
             )
-
+        
         self.template_str = "\n".join(lines)
         return self.template_str
-
+    
     def render_prompt(self, **kwargs) -> str:
         """
         Render the prompt template using Jinja2 with actual input values.
-
-        Args:
-            **kwargs: Key-value pairs corresponding to input fields.
-
-        Returns:
-            str: Rendered prompt string with values inserted.
         """
         if not self.template_str:
             self._build_template()
@@ -147,11 +147,6 @@ class PromptConstructor(BaseModel):
     def giveInput(self, name: str, desc: str = "", type_hint: Any = str):
         """
         Add or update an input field.
-
-        Args:
-            name (str): Name of the input variable.
-            desc (str): Description of the input field.
-            type_hint (Any): Python type of the input.
         """
         if name in self.input_fields:
             self.input_fields[name].desc = desc
@@ -162,15 +157,9 @@ class PromptConstructor(BaseModel):
     def giveOutput(self, name: str, desc: str = "", type_hint: Any = str):
         """
         Add or update an output field.
-
-        Args:
-            name (str): Name of the output variable.
-            desc (str): Description of the output field.
-            type_hint (Any): Python type of the output.
         """
         if name in self.output_fields:
             self.output_fields[name].desc = desc
             self.output_fields[name].type = type_hint
         else:
-            self.output_fields[name] = PromptField(name=name, type=type_hint)
-    
+            self.output_fields[name] = PromptField(name=name, type=type_hint, desc=desc)

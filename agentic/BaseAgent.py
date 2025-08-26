@@ -46,7 +46,9 @@ class BaseAgent:
         # Retrieve memory safely
         user_prompt = ""
         if self.memory is not None:
-            retrieved = self.memory.retrieve(self, self.name, "") or ""
+            retrieved = self.memory.retrieve(self.name, "") or ""
+            if isinstance(retrieved, list):
+                retrieved = " ".join(map(str, retrieved))
             user_prompt += retrieved
 
         user_prompt += f"\n{user_input}"
@@ -56,33 +58,29 @@ class BaseAgent:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},  # fixed: now includes memory + new input
         ]
-
         # Debug mode just returns the prompt
         if debug_mode:
             return system_prompt
-
+        
         # Run LLM
         res = (llm_inst or self.llm_inst).get_result(package, temp=temp)
-
         # Handle no tools
         if not self.funcs:
-            if save_mode and self.memory is not None:
+            if self.memory is not None:
                 self.memory.add(agent_id=self.name, item=res)
             return res
         return self._run_selected_func(res)
 
     def _run_selected_func(self, params: str) -> None:
         """Run a specific function with the provided arguments."""
-        print(params)
         try:
             parsed = json.loads(params)
         except json.JSONDecodeError:
-            raise KeyError("Unable to decode json result into workable dict")
+            raise KeyError("Unable to decode json result into workable dict of "+ params)
 
         func = self.func_map.get(parsed.get("func_name"))
         if not func:
-            raise KeyError(f"Function {parsed.get('func_name')} not found in func_map.")
-
+            return params
         return func(*parsed.get("params", []))
 
     def attach_model_inst(self, model_inst: LanguageModel) -> None:
