@@ -36,7 +36,8 @@ if __name__ == "__main__":
         funcs=[agent_webscraping, addition, calendar.fetch_calendarPoint],
     )
     question="Using this link,  https://zig.guide/language-basics/structs/, Teach me about struct of zig in 100 words"
-    print(webscraper.run(question, oai, 0))
+    print(webscraper.run(question, oai, 0, True))
     #print(agent_webscraping("https://en.wikipedia.org/wiki/Indonesian_National_Revolution"))
+
 
 

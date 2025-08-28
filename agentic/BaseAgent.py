@@ -27,7 +27,7 @@ class BaseAgent:
     def __create_func_map(self, funcs: List[Callable]):
         """Creates a dictionary mapping function names (as strings) to callables."""
         return {f.__name__: f for f in funcs}
-
+    
     def run(
         self,
         user_input: str,
@@ -36,40 +36,46 @@ class BaseAgent:
         debug_mode: bool = False
     ):
         """Run the agent: parse functions, build prompt, call LLM, and execute selected function."""
-        # Parse all functions into prompt
+        # Parse all functions into the system prompt
         for func in self.funcs:
             self.prompt.parse_func(func)
 
-        # Build system prompt
         system_prompt = self.prompt.render_prompt()
 
-        # Retrieve memory safely
-        user_prompt = ""
+        # Build message history
+        package = [{"role": "system", "content": system_prompt}]
+        package.append({"role": "user", "content": user_input})
+
+        # Retrieve past memory
         if self.memory is not None:
-            retrieved = self.memory.retrieve(self.name, "") or ""
+            retrieved = self.memory.retrieve(self.name, "")
             if isinstance(retrieved, list):
                 retrieved = " ".join(map(str, retrieved))
-            user_prompt += retrieved
+            if retrieved:
+                package.append({"role": "system", "content": f"Observation: {retrieved}"})
 
-        user_prompt += f"\n{user_input}"
-
-        # Package for LLM
-        package = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},  # fixed: now includes memory + new input
-        ]
-        # Debug mode just returns the prompt
         if debug_mode:
-            return system_prompt
-        
-        # Run LLM
+            return package  # show full prompt for debugging
+
+        # Run the model
         res = (llm_inst or self.llm_inst).get_result(package, temp=temp)
-        # Handle no tools
+
+        # If no tools, just return plain text
         if not self.funcs:
             if self.memory is not None:
                 self.memory.add(agent_id=self.name, item=res)
             return res
-        return self._run_selected_func(res)
+
+        # Detect Action format before running a function
+        if isinstance(res, str) and res.strip().startswith("{") and res.strip().endswith("}"):
+            try:
+                return self._run_selected_func(res)
+            except Exception:
+                return res  # fallback
+        else:
+            return res
+
+
 
     def _run_selected_func(self, params: str) -> None:
         """Run a specific function with the provided arguments."""
