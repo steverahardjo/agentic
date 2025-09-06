@@ -55,23 +55,20 @@ class BaseAgent:
                 package.append({"role": "system", "content": f"Observation: {retrieved}"})
 
         if debug_mode:
-            return package  # show full prompt for debugging
-
-        # Run the model
+            return package
+        
         res = (llm_inst or self.llm_inst).get_result(package, temp=temp)
 
-        # If no tools, just return plain text
         if not self.funcs:
             if self.memory is not None:
                 self.memory.add(agent_id=self.name, item=res)
             return res
-
-        # Detect Action format before running a function
+        
         if isinstance(res, str) and res.strip().startswith("{") and res.strip().endswith("}"):
             try:
                 return self._run_selected_func(res)
             except Exception:
-                return res  # fallback
+                return res
         else:
             return res
 
