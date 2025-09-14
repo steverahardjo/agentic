@@ -1,6 +1,7 @@
 from BaseAgent import BaseAgent
 from llm.LLM import LanguageModel
 from typing import Dict, List, Union
+import enum
 from pydantic import BaseModel
 from AgentMemory import MemoryEngine
 
@@ -9,7 +10,17 @@ class END:
     """Marker for circuit termination"""
     pass
 
-
+class HILType(enum):
+    Boolean = "bool"
+    Rating = "rating"
+    Edit = "edit"
+    Choice = "choice"
+    
+class HumanInLoop:
+    def __init__(self, query:str, llm_inst:LanguageModel=None, interrupt_func:str):
+        self.query = query
+        self.llm_inst = llm_inst
+        
 class Circuit(BaseModel):
     name: str
     desc: str
@@ -55,13 +66,3 @@ class Circuit(BaseModel):
             current_agent = downstream[0]
             
         return result
-
-
-
-#input is a yaml format string
-# ---
-# circ_name: ""
-# circ_desc: ""
-# agents:
-# - 
-def tool_circuit_builder(model_inst:LanguageModel):
