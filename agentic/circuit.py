@@ -1,10 +1,11 @@
-from BaseAgent import BaseAgent
+from base_agent import BaseAgent
 from llm.LLM import LanguageModel
 from typing import Dict, List, Union
 import enum
 from pydantic import BaseModel
-from AgentMemory import MemoryEngine
-
+from memory import MemoryEngine
+import networkx as nx
+import matplotlib.pyplot as plt
 
 class END:
     """Marker for circuit termination"""
@@ -15,12 +16,8 @@ class HILType(enum):
     Rating = "rating"
     Edit = "edit"
     Choice = "choice"
-    
-class HumanInLoop:
-    def __init__(self, query:str, llm_inst:LanguageModel=None, interrupt_func:str):
-        self.query = query
-        self.llm_inst = llm_inst
-        
+
+
 class Circuit(BaseModel):
     name: str
     desc: str
@@ -66,3 +63,19 @@ class Circuit(BaseModel):
             current_agent = downstream[0]
             
         return result
+    
+    def visualize(self):
+        G = nx.DiGraph()
+
+        for agent, downstream_agents in self.connections.items():
+            for downstream_agent in downstream_agents:
+                if downstream_agent is END:
+                    G.add_edge(agent.name, "END")
+                else:
+                    G.add_edge(agent.name, downstream_agent.name)
+
+        pos = nx.spring_layout(G)
+        plt.figure(figsize=(10, 6))
+        nx.draw(G, pos, with_labels=True, arrows=True, node_size=2000, node_color="lightblue", font_size=10)
+        plt.title(f"Circuit: {self.name}")
+        plt.show()

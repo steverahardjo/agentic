@@ -14,7 +14,8 @@ class BaseAgent:
         description: str = "",
         prompt: Optional[PromptConstructor] = None,
         memory: Optional[MemoryEngine] = None,
-        funcs: Optional[List[Callable]] = None
+        funcs: Optional[List[Callable]] = None,
+        llm_inst: Optional[LanguageModel] = None
     ):
         self.name = name
         self.description = description
@@ -22,7 +23,7 @@ class BaseAgent:
         self.memory = memory
         self.funcs = funcs or []
         self.func_map = self.__create_func_map(self.funcs)
-        self.llm_inst: Optional[LanguageModel] = None
+        self.llm_inst: Optional[LanguageModel] = llm_inst
 
     def __create_func_map(self, funcs: List[Callable]):
         """Creates a dictionary mapping function names (as strings) to callables."""
@@ -31,7 +32,6 @@ class BaseAgent:
     def run(
         self,
         user_input: str,
-        llm_inst: Optional[LanguageModel] = None,
         temp: int = 0,
         debug_mode: bool = False
     ):
@@ -57,7 +57,7 @@ class BaseAgent:
         if debug_mode:
             return package
         
-        res = (llm_inst or self.llm_inst).get_result(package, temp=temp)
+        res = self.llm_inst.get_result(package, temp=temp)
 
         if not self.funcs:
             if self.memory is not None:
@@ -89,6 +89,3 @@ class BaseAgent:
     def attach_model_inst(self, model_inst: LanguageModel) -> None:
         """Attach a language model instance for later use."""
         self.llm_inst = model_inst
-
-    def __str__(self):
-        return f"Agent<{self.name}>\n Description: {self.description}\nFunctions: {[f.__name__ for f in self.funcs]}"
