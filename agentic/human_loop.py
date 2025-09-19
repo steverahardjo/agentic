@@ -9,15 +9,6 @@ class END:
     """Marker for circuit termination"""
     pass
 
-class HILType(enum.Enum):
-    Boolean = "bool"      # confirm yes/no
-    Rating = "rating"     # give feedback score
-    Edit = "edit"         # correct/edit output
-    Choice = "choice"     # pick from multiple branches
-    Routing = "routing"   # route to specific branch
-
-# ==== Human in the Loop ====
-
 
 class BaseHIL:
     def __init__(self, query: str, llm_inst=None):
@@ -149,6 +140,14 @@ class RouterHIL(BaseHIL):
                 return option
         return resp
 
+class ConvergenceHIL(BaseHIL):
+    ###todo unsure how to implement
+    def __init__(self, query: str, llm_inst=None):
+        super().__init__(query, llm_inst)
+
+    def interrupt(self, machine_outputs: List[str]) -> str:
+        """Ask for human input to synthesize or summarize multiple machine outputs."""
+        pass
 class HijackHIL(BaseHIL):
     def interrupt(self, machine_output: str) -> str:
         """Ask for human input to modify or hijack the machine output."""
