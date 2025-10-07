@@ -1,12 +1,16 @@
-from BaseAgent import BaseAgent
+from agentic.base_agent import BaseAgent
 from llm.LLM import LanguageModel
 from typing import Dict, List, Union
 from pydantic import BaseModel
-from AgentMemory import MemoryEngine
+from agentic.memory import MemoryEngine
 
 
 class END:
     """Marker for circuit termination"""
+    pass
+
+class Interrupt:
+    """Marker for interrupting circuit execution"""
     pass
 
 
@@ -14,7 +18,6 @@ class Circuit(BaseModel):
     name: str
     desc: str
     connections: Dict[BaseAgent, List[Union[BaseAgent, END]]]
-    interrupting: List[BaseAgent] = []
 
     def attach_modelInst(self) -> None:
         """
@@ -55,13 +58,3 @@ class Circuit(BaseModel):
             current_agent = downstream[0]
             
         return result
-
-
-
-#input is a yaml format string
-# ---
-# circ_name: ""
-# circ_desc: ""
-# agents:
-# - 
-#def tool_circuit_builder(model_inst:LanguageModel):

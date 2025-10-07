@@ -8,9 +8,6 @@ class CodeRunner:
         self.timeout=timeout
         
     def run_python(self, code_snippet:str):
-<<<<<<< HEAD
-        return exec(code_snippet)
-=======
         """
         Tool function to create run using exec sandboxed
         args:
@@ -22,7 +19,6 @@ class CodeRunner:
         return ""
         return exec(res)
     
->>>>>>> 305b317 (tool is working for webscraper, but not for code)
     
     def run_shell(self, command:str)->str:
         try:
@@ -36,4 +32,5 @@ class CodeRunner:
             }
             
         except Exception as e:
-            return {"stdout": "", "stderr": str(e), "returncode": -1}      
+            return {"stdout": "", "stderr": str(e), "returncode": -1}    
+
