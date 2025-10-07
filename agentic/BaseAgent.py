@@ -35,22 +35,51 @@ class BaseAgent:
         print(system_prompt)
         # Call the language model
         res = llm_inst.get_result(package, temp = self.temp)
-
         if self.funcs is None:
             return res
-        else:
-            return self.run_selected_func(res)
+        
+    def __create_func_map(self, funcs: List[Callable]):
+        """Creates a dictionary mapping function names (as strings) to callables."""
+        return {f.__name__: f for f in funcs}
     
-         
-    def run_selected_func(self, params = str):
-        """
-        Run a specific function with the provided arguments.
-        """
-        print(params)
-        try:
-            parsed = json.loads(params)
-        except json.JSONDecodeError:
-            raise KeyError("Unable to decode json result into workable dict")
-        func = self.func_map[parsed.get("func_name")]
-        params = parsed.get("params", [])
-        return func(*params)
+    def run(
+        self,
+        user_input: str,
+        llm_inst: Optional[LanguageModel] = None,
+        temp: int = 0,
+        debug_mode: bool = False
+    ):
+        """Run the agent: parse functions, build prompt, call LLM, and execute selected function."""
+        # Parse all functions into the system prompt
+        for func in self.funcs:
+            self.prompt.parse_func(func)
+
+        system_prompt = self.prompt.render_prompt()
+
+        # Build message history
+        package = [{"role": "system", "content": system_prompt}]
+        package.append({"role": "user", "content": user_input})
+
+        # Retrieve past memory
+        if self.memory is not None:
+            retrieved = self.memory.retrieve(self.name, "")
+            if isinstance(retrieved, list):
+                retrieved = " ".join(map(str, retrieved))
+            if retrieved:
+                package.append({"role": "system", "content": f"Observation: {retrieved}"})
+
+        if debug_mode:
+            return package
+        
+        res = (llm_inst or self.llm_inst).get_result(package, temp=temp)
+
+        if not self.funcs:
+            if self.memory is not None:
+                self.memory.add(agent_id=self.name, item=res)
+            return res
+        
+        if isinstance(res, str) and res.strip().startswith("{") and res.strip().endswith("}"):
+            try:
+                return self._run_selected_func(res)
+            except Exception:
+                return res
