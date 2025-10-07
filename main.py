@@ -54,3 +54,19 @@ messages: List[Dict[str, str]] = [
 result = client.get_result(messages)
 print(result)
 
+    def addition(x, y):
+        return x+y
+    pc = PromptConstructor(
+        prompt_desc="Use only ONE tool to process the given link and return results",
+        process_type="CodingTask",
+        prompt_name="Coding task"
+    )
+
+    webscraper=BaseAgent(
+        name="CodingTask",
+        description="An agent to write and run coding task",
+        prompt=pc,
+        funcs=[agent_webscraping, addition, coder.run_python]
+    )
+    res=webscraper.run("write me a solve and test cases runned of palindrome longest substring", oai)
+    print(res)

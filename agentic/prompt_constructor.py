@@ -74,6 +74,19 @@ class PromptConstructor(BaseModel):
         for f in self.output_fields.values():
             lines.append(f"- {f.name} ({f.type.__name__}): {f.desc}")
 
+        # Tools section
+        if self.tools:
+            lines.append("\n" + "*"*50)
+            lines.append("TOOLS AVAILABLE")
+            lines.append("*"*50)
+            for tool_name, tool in self.tools.items():
+                lines.append(f"[Tool] {tool_name} - {tool.description}")
+                for f in tool.fields.values():
+                    lines.append(f"   Param: {f.name} ({f.type.__name__})")
+            lines.append("*"*50)
+            lines.append('Always output tool usage in this format: \n{"func_name": "function_name", "params": [param1, param2]}\nDo not output lists inside lists. Do not write function call syntax.')
+
+
         # You can customize the template string further or load from external source
         self.template_str = "\n".join(lines)
         return self.template_str
