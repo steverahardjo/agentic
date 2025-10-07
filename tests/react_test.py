@@ -3,16 +3,10 @@ from llm.LLM import OpenAIClient
 from agentic.tools.searcher import agent_webscraping
 from agentic.tools.code_runner import CodeRunner
 from agentic.tools.db_connector import GcalendarConnector
-<<<<<<< HEAD
+
 from agentic.memory import InMemory
 from agentic.react_agent import ReactAgent, ReactPrompt
 from agentic.base_agent import BaseAgent
-=======
-from agentic.AgentMemory import InMemory
-from agentic.react_agent import ReactAgent, ReactPrompt
-from agentic.BaseAgent import BaseAgent
->>>>>>> 900dd12 (tidy file name convention, add a Human in Loop)
-
 OPENAI_API_KEY = "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"
 coder= CodeRunner(3)
 calendar = GcalendarConnector("token.json")
@@ -44,10 +38,3 @@ if __name__ == "__main__":
     question="Using this link,  https://zig.guide/language-basics/structs/, Teach me about struct of zig in 100 words"
     print(webscraper.run(question, oai, 0, True))
     #print(agent_webscraping("https://en.wikipedia.org/wiki/Indonesian_National_Revolution"))
-<<<<<<< HEAD
-=======
-
-
-
-
->>>>>>> 900dd12 (tidy file name convention, add a Human in Loop)

@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 # DummyAgent for testing
 class DummyAgent:
 	def __init__(self, name, output):
@@ -43,12 +41,4 @@ def test_circuit_cycle_detection():
 	assert a1.run_called
 	assert a2.run_called
 	assert result in ("out1", "out2")
->>>>>>> 900dd12 (tidy file name convention, add a Human in Loop)
-from agentic.circuit import Circuit, END
-from agentic.base_agent import BaseAgent
-from llm.LLM import LanguageModel
-from agentic.memory import MemoryEngine
-from agentic.tools.searcher import agent_webscraping
-from agentic.tools.code_runner import CodeRunner
-from agentic.tools.db_connector import GcalendarConnector
 

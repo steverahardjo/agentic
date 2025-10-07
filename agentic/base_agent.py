@@ -1,6 +1,5 @@
-<<<<<<< HEAD
-from agentic.prompt_constructor import PromptConstructor
 from typing import Callable, List, Optional
+from agentic.prompt_constructor import PromptConstructor
 from agentic.memory import MemoryEngine
 from agentic.tools.code_runner import CodeRunner
 from llm.LLM import LanguageModel
@@ -8,6 +7,7 @@ import json
 import enum
 
 runner = CodeRunner(3)
+
 
 class BaseAgent:
     def __init__(
@@ -26,52 +26,10 @@ class BaseAgent:
         self.func_map = self.__create_func_map(self.funcs)
         self.llm_inst: Optional[LanguageModel] = None
 
-=======
-from prompt_constructor import PromptConstructor, PromptField
-from typing import Callable, Dict, Any
-from AgentMemory import MemoryEngine
-from tools.code_runner import CodeRunner
-
-runner = CodeRunner(3)
-class BaseAgent:
-    def __init__(self, name:str, description:str = "", prompt:PromptConstructor=None, memory = MemoryEngine, retries:int = 3, temp:int=0, funcs = List[Callable]):
-        self.description = description
-        self.name=name
-        self.prompt = prompt if prompt else PromptConstructor(prompt_name=name, process_type="default")
-        self.memory = memory
-        self.funcs=funcs       
-    def run(self, user_input:str):
-        """
-        This method should be overridden by subclasses to implement the agent's behavior.
-        """
-        for x in self.funcs:
-            self.prompt.parse_func(x)
-            
-    def run_selected_func(self, func: Callable, params:List, **kwargs):
-        """
-        Run a specific function with the provided arguments.
-        """
-        for key,value in args:
-        f = func(*param)
-        return runner.run_python(f)
-        
-        # Build the system prompt
-        system_prompt = self.prompt.build_template()
-        package = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input}
-        ]
-        print(system_prompt)
-        # Call the language model
-        res = llm_inst.get_result(package, temp = self.temp)
-        if self.funcs is None:
-            return res
-        
->>>>>>> 900dd12 (tidy file name convention, add a Human in Loop)
     def __create_func_map(self, funcs: List[Callable]):
-        """Creates a dictionary mapping function names (as strings) to callables."""
+        """Creates a dictionary mapping function names to callables."""
         return {f.__name__: f for f in funcs}
-    
+
     def run(
         self,
         user_input: str,
@@ -85,8 +43,6 @@ class BaseAgent:
             self.prompt.parse_func(func)
 
         system_prompt = self.prompt.render_prompt()
-
-        # Build message history
         package = [{"role": "system", "content": system_prompt}]
         package.append({"role": "user", "content": user_input})
 
@@ -100,40 +56,49 @@ class BaseAgent:
 
         if debug_mode:
             return package
-        
+
         res = (llm_inst or self.llm_inst).get_result(package, temp=temp)
 
+        # Store in memory
+        if self.memory is not None:
+            self.memory.add(agent_id=self.name, item=res)
+
+        # If no functions, just return result
         if not self.funcs:
-            if self.memory is not None:
-                self.memory.add(agent_id=self.name, item=res)
             return res
-        
+
+        # Try structured execution
         if isinstance(res, str) and res.strip().startswith("{") and res.strip().endswith("}"):
             try:
                 return self._run_selected_func(res)
             except Exception:
                 return res
-<<<<<<< HEAD
         else:
             return res
 
-
-
-    def _run_selected_func(self, params: str) -> None:
+    def _run_selected_func(self, params: str):
         """Run a specific function with the provided arguments."""
         try:
             parsed = json.loads(params)
         except json.JSONDecodeError:
-            raise KeyError("Unable to decode json result into workable dict of "+ params)
+            raise KeyError("Unable to decode json result into workable dict of " + params)
 
         func = self.func_map.get(parsed.get("func_name"))
         if not func:
             return params
         return func(*parsed.get("params", []))
 
-    def attach_model_inst(self, model_inst: LanguageModel) -> None:
+    def attach_model_inst(self, model_inst: LanguageModel):
         """Attach a language model instance for later use."""
         self.llm_inst = model_inst
+
+    def __str__(self):
+        return f"Agent<{self.name}>\n Description: {self.description}\n Functions: {[f.__name__ for f in self.funcs]}"
+
+
+# ===============================
+# HUMAN-IN-THE-LOOP EXTENSION
+# ===============================
 
 class InterruptType(enum.Enum):
     MACHINE_REVIEW = "review"    # human reviews everything
@@ -148,7 +113,7 @@ class InterruptType(enum.Enum):
 class HumanInterrupt:
     def __init__(
         self,
-        agent_after,          # BaseAgent instance
+        agent_after: BaseAgent,
         query: str,
         interrupt_type: InterruptType = InterruptType.CONFIRM,
         llm_inst: Optional[LanguageModel] = None
@@ -196,7 +161,6 @@ class HumanInterrupt:
                 return machine_output
 
         except Exception as e:
-            # If static fails, we’ll escalate to LLM
             print(f"[Static interruption failed: {e}]")
             return None
 
@@ -220,8 +184,6 @@ class HumanInterrupt:
     def run(self, machine_output: str) -> str:
         """Try static run first, then fall back to LLM if needed."""
         result = self.run_static(machine_output)
-        if result is None:  # static failed
+        if result is None:
             return self.run_llm(machine_output)
         return result
-=======
->>>>>>> 900dd12 (tidy file name convention, add a Human in Loop)
