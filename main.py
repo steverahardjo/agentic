@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+from agentic.prompt_constructor
+from llm.LLM import OpenAIClient
+>>>>>>> 636f039 (commit before pushing)
 from agentic.tools.searcher import agent_webscraping
 from llm.LLM import OpenAIClient
 import inspect

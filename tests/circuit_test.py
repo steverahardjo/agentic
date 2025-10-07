@@ -41,4 +41,7 @@ def test_circuit_cycle_detection():
 	assert a1.run_called
 	assert a2.run_called
 	assert result in ("out1", "out2")
+<<<<<<< HEAD
 
+=======
+>>>>>>> 636f039 (commit before pushing)
