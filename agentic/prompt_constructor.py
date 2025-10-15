@@ -14,9 +14,7 @@ class PromptConstructor(BaseModel):
     Basic Constructor to build prompt programmatically, first we declared the name and type (tagger)
     Input and Output command are build **incr** through functions and add as a (name, type, desc)
     This can be: a command, an example, etc
-    ----------------------------------------------
-    TODO:Extended to common usage (Classification, reACT, CoT etc)
-    INSPIRED BY DSPY'S SIGNATURE Prompting Principle
+
     """
     prompt_name: str
     process_type: str
@@ -45,6 +43,8 @@ class PromptConstructor(BaseModel):
         if return_annotation is inspect._empty:
             return_annotation = str
         self.output_fields["result"] = PromptField(name="result", type=return_annotation)
+    
+    def parse_mcp_func(self, )
 
     def giveInput(self, name: str, desc: str = ""):
         # Add or update input field description, default type is str

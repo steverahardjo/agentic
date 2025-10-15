@@ -7,7 +7,7 @@ from llm.LLM import LanguageModel
 import re
 
 # === ReAct Prompt Rules ===
-react_rules = """
+REACT_RULES = """
 You are an AI assistant that follows the ReAct framework.
 
 You must always respond in exactly one of the following formats:
@@ -28,15 +28,15 @@ Rules:
 - Always use the latest Observation to plan your next step.
 """
 
-# === Prompt Constructor ===
+# Prompt Constructor
 class ReactPrompt(PromptConstructor):
     prompt_name: str = Field(default="react_prompt")
-    prompt_command: str = Field(default=react_rules)
+    prompt_command: str = Field(default=REACT_RULES)
 
 # Single shared ReactPrompt instance
 react_prompt = ReactPrompt()
 
-# === React Agent ===
+# React Agent Class
 class ReactAgent(BaseAgent):
     def __init__(
         self,
@@ -54,15 +54,12 @@ class ReactAgent(BaseAgent):
             prompt=prompt,
         )
         self.max_iter = 5
-        self.loop_flag = True  # loop control
-
-        # Map of callable actions for ReAct
+        self.loop_flag = True 
         self.func_map["stop"] = self.stop
 
     def stop(self):
         """Stop the agent loop immediately."""
         self.loop_flag = True
-        print(f"[STOP] {self.name} loop has been stopped.")
         self.logging(result="[STOP] stop() called")
 
     def run(
@@ -75,10 +72,9 @@ class ReactAgent(BaseAgent):
         """Run the ReAct agent loop until [FINISHED], stop is called, or max_iter is reached."""
         curr_iter = 0
         final_result: str = ""
-        self.loop_flag = True  # reset loop at start
+        self.loop_flag = True 
 
         while curr_iter < self.max_iter and self.loop_flag:
-            # Call parent run to get the LLM result
             result = super().run(
                 user_input=user_input,
                 llm_inst=llm_inst,

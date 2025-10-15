@@ -1,6 +1,5 @@
 from typing import Dict, List, Union, Optional
 from pydantic import BaseModel
-import enum
 from circuit import Circuit
 from base_agent import BaseAgent
 from memory import MemoryEngine
@@ -72,12 +71,13 @@ class ApprovalHIL(BaseHIL):
     def _normalize_response(self, response: str) -> bool:
         """Normalize LLM/human response to boolean yes/no."""
         resp = response.lower().strip()
-        return resp.startswith("y")  # handles 'yes', 'yep', 'yeah'
+        return resp.startswith("y")
+    
     
 class RouterHIL(BaseHIL):
     def __init__(self, query: str, options: Optional[List[str]] = None, llm_inst=None):
         super().__init__(query, llm_inst)
-        self.options = options or []  # can be manually given or discovered later
+        self.options = options or []
 
     def set_routes_from_circuit(self, circuit: Circuit) -> None:
         """
@@ -145,7 +145,7 @@ class ConvergenceHIL(BaseHIL):
     def __init__(self, query: str, llm_inst=None):
         super().__init__(query, llm_inst)
 
-    def interrupt(self, machine_outputs: List[str]) -> str:
+    def interrupt(self, machine_outputs: List[str], command_to_user:str=None) -> str:
         """Ask for human input to synthesize or summarize multiple machine outputs."""
         pass
 class HijackHIL(BaseHIL):

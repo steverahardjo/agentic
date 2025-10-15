@@ -56,8 +56,6 @@ class BasicVectorDB:
         return f"This Database || ID: {self.db_id} with Usage: {self.usage}"
 
 
-# ---- Router ----
-
 class Router:
     def __init__(self, session_name: str, model_inst, model_name: str):
         self.session_name = session_name

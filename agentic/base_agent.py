@@ -1,10 +1,10 @@
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Union
 from agentic.prompt_constructor import PromptConstructor
 from agentic.memory import MemoryEngine
 from agentic.tools.code_runner import CodeRunner
 from llm.LLM import LanguageModel
 import json
-import enum
+from agentic.tools.mcp_connector import MCPClient
 
 runner = CodeRunner(3)
 
@@ -16,8 +16,8 @@ class BaseAgent:
         description: str = "",
         prompt: Optional[PromptConstructor] = None,
         memory: Optional[MemoryEngine] = None,
-        funcs: Optional[List[Callable]] = None
-    ):
+        funcs: Optional[Union[List[Callable], List[MCPClient]]] = None):
+        
         self.name = name
         self.description = description
         self.prompt = prompt if prompt else PromptConstructor(prompt_name=name, process_type="default")
@@ -94,96 +94,3 @@ class BaseAgent:
 
     def __str__(self):
         return f"Agent<{self.name}>\n Description: {self.description}\n Functions: {[f.__name__ for f in self.funcs]}"
-
-
-# ===============================
-# HUMAN-IN-THE-LOOP EXTENSION
-# ===============================
-
-class InterruptType(enum.Enum):
-    MACHINE_REVIEW = "review"    # human reviews everything
-    CONFIRM = "confirm"          # human approves/rejects
-    EDIT = "edit"                # human directly edits output
-    OVERRIDE = "override"        # human provides final answer, ignoring machine
-    FEEDBACK = "feedback"        # human gives comments, system stores them
-    CHOOSE_FUNC = "choose_func"  # human decides which function/tool to run
-    DELAY = "delay"              # pause execution until human says continue
-
-
-class HumanInterrupt:
-    def __init__(
-        self,
-        agent_after: BaseAgent,
-        query: str,
-        interrupt_type: InterruptType = InterruptType.CONFIRM,
-        llm_inst: Optional[LanguageModel] = None
-    ):
-        self.agent_after = agent_after
-        self.query = query
-        self.interrupt_type = interrupt_type
-        self.llm_inst = llm_inst
-
-    # -------------------
-    # 1. STATIC RUN
-    # -------------------
-    def run_static(self, machine_output: str) -> str:
-        """Static interruption handling: human-only interaction, no LLM."""
-        try:
-            if self.interrupt_type == InterruptType.CONFIRM:
-                confirm = input(f"Confirm result? (y/n)\nResult: {machine_output}\n> ").strip().lower()
-                if confirm == "y":
-                    return machine_output
-                else:
-                    raise ValueError("Human rejected confirmation")
-
-            elif self.interrupt_type == InterruptType.EDIT:
-                print(f"Original output: {machine_output}")
-                edited = input("Enter corrected version:\n> ")
-                if not edited.strip():
-                    raise ValueError("Empty edit not allowed")
-                return edited
-
-            elif self.interrupt_type == InterruptType.MACHINE_REVIEW:
-                print("\n=== MACHINE REVIEW ===")
-                print(f"Query: {self.query}")
-                print(f"Machine Output:\n{machine_output}")
-                decision = input("Accept [a], Reject [r], or Edit [e]?\n> ").strip().lower()
-                if decision == "a":
-                    return machine_output
-                elif decision == "r":
-                    raise ValueError("Rejected by human")
-                elif decision == "e":
-                    return input("Enter corrected version:\n> ")
-                else:
-                    raise ValueError("Invalid choice in review mode")
-
-            else:
-                return machine_output
-
-        except Exception as e:
-            print(f"[Static interruption failed: {e}]")
-            return None
-
-    # -------------------
-    # 2. LLM RUN (Fallback)
-    # -------------------
-    def run_llm(self, machine_output: str) -> str:
-        """Use LLM to resolve interruptions if static handling fails."""
-        if not self.llm_inst:
-            return f"[No LLM available, returning machine output]\n{machine_output}"
-
-        package = [
-            {"role": "system", "content": "You are a human-overseer assistant. Resolve conflicts or corrections when a human rejects or fails to decide."},
-            {"role": "user", "content": f"Query: {self.query}\nMachine Output: {machine_output}\nInstruction: Decide the final result or fix it."}
-        ]
-        return self.llm_inst.get_result(package, temp=0)
-
-    # -------------------
-    # 3. MASTER RUN
-    # -------------------
-    def run(self, machine_output: str) -> str:
-        """Try static run first, then fall back to LLM if needed."""
-        result = self.run_static(machine_output)
-        if result is None:
-            return self.run_llm(machine_output)
-        return result
