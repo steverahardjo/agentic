@@ -27,4 +27,5 @@ dependencies = [
     "python-telegram-bot>=21.7",
     "ollama>=0.5.3",
     "fastmcp>=2.12.4",
+    "mcp>=1.17.0",
 ]

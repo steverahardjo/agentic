@@ -7,7 +7,7 @@ from agentic.tools.searcher import agent_webscraping
 from agentic.tools.code_runner import CodeRunner
 from agentic.tools.db_connector import GcalendarConnector
 from agentic.memory import InMemory
-from agentic.react_agent import ReactAgent, ReactPrompt
+from agentic.preset_agents.react_agent import ReactAgent, ReactPrompt
 from agentic.base_agent import BaseAgent
 
 # 🚨 NEVER hardcode API keys directly in code

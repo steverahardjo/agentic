@@ -13,4 +13,5 @@ token.json
 client_secret.json
 .git
 main.py
-tests/react_test.py
+tests/react_test.pyh
+tests/mcp_test.py

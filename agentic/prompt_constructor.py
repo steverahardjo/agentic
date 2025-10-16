@@ -2,6 +2,7 @@ from typing import Callable, Dict, Any
 from pydantic import BaseModel, Field
 from jinja2 import Template
 import inspect
+from mcp.types import Tool
 
 class PromptField(BaseModel):
     name: str
@@ -26,7 +27,7 @@ class PromptConstructor(BaseModel):
     # You can keep a template string that you build incrementally
     template_str: str = ""
 
-    def parse_func(self, func: Callable):
+    def parse_func(self, func: Callable)->None:
         sig = inspect.signature(func)
         self.input_fields = {}
         self.output_fields = {}
@@ -44,7 +45,29 @@ class PromptConstructor(BaseModel):
             return_annotation = str
         self.output_fields["result"] = PromptField(name="result", type=return_annotation)
     
-    def parse_mcp_func(self, )
+    async def parse_mcp(self, tool: Tool):
+        self.input_fields.clear()
+        self.output_fields.clear()
+
+        # Parse inputSchema if present
+        input_schema = getattr(tool, "inputSchema", None)
+        if input_schema and input_schema.get("type") == "object":
+            props = input_schema.get("properties", {})
+            for field_name, field_schema in props.items():
+                pf = self._parse_schema_field(field_name, field_schema)
+                self.input_fields[field_name] = pf
+
+        # Parse outputSchema if present
+        output_schema = getattr(tool, "outputSchema", None)
+        if output_schema:
+            if output_schema.get("type") == "object":
+                props = output_schema.get("properties", {})
+                for field_name, field_schema in props.items():
+                    pf = self._parse_schema_field(field_name, field_schema)
+                    self.output_fields[field_name] = pf
+        else:
+            # Default output
+            self.output_fields["result"] = PromptField(name="result", type=str)
 
     def giveInput(self, name: str, desc: str = ""):
         # Add or update input field description, default type is str

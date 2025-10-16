@@ -5,6 +5,7 @@ from agentic.tools.code_runner import CodeRunner
 from llm.LLM import LanguageModel
 import json
 from agentic.tools.mcp_connector import MCPClient
+import await
 
 runner = CodeRunner(3)
 
@@ -40,7 +41,13 @@ class BaseAgent:
         """Run the agent: parse functions, build prompt, call LLM, and execute selected function."""
         # Parse all functions into the system prompt
         for func in self.funcs:
-            self.prompt.parse_func(func)
+            if callable(func):
+                self.prompt.parse_func(func)
+            elif isinstance(func, MCPClient):
+                # Assuming MCPClient has an async method `list_tools`
+                tools = await func.list_tools()
+                for tool in tools:
+                    await self.prompt.parse_mcp(tool)
 
         system_prompt = self.prompt.render_prompt()
         package = [{"role": "system", "content": system_prompt}]
