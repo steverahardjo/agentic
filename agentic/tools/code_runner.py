@@ -1,6 +1,4 @@
 import subprocess
-import sys
-import io
 import re
 
 class CodeRunner:

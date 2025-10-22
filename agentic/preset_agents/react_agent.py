@@ -28,23 +28,15 @@ Rules:
 - Always use the latest Observation to plan your next step.
 """
 
-# Prompt Constructor
-class ReactPrompt(PromptConstructor):
-    prompt_name: str = Field(default="react_prompt")
-    prompt_command: str = Field(default=REACT_RULES)
-
-# Single shared ReactPrompt instance
-react_prompt = ReactPrompt()
-
-# React Agent Class
+# === React Agent ===
 class ReactAgent(BaseAgent):
     def __init__(
         self,
         name: str,
+        prompt: PromptConstructor,
         description: str = "",
         memory: Optional[MemoryEngine] = None,
-        funcs: Optional[List[Callable]] = None,
-        prompt: ReactPrompt = react_prompt
+        funcs: Optional[List[Callable]] = None
     ):
         super().__init__(
             name=name,
@@ -54,12 +46,15 @@ class ReactAgent(BaseAgent):
             prompt=prompt,
         )
         self.max_iter = 5
-        self.loop_flag = True 
+        self.loop_flag = True
+        self.prompt._attach_preset_command(REACT_RULES)
+        # Map of callable actions for ReAct
         self.func_map["stop"] = self.stop
 
     def stop(self):
         """Stop the agent loop immediately."""
         self.loop_flag = True
+        print(f"[STOP] {self.name} loop has been stopped.")
         self.logging(result="[STOP] stop() called")
 
     def run(
@@ -72,9 +67,10 @@ class ReactAgent(BaseAgent):
         """Run the ReAct agent loop until [FINISHED], stop is called, or max_iter is reached."""
         curr_iter = 0
         final_result: str = ""
-        self.loop_flag = True 
+        self.loop_flag = True  # reset loop at start
 
         while curr_iter < self.max_iter and self.loop_flag:
+            # Call parent run to get the LLM result
             result = super().run(
                 user_input=user_input,
                 llm_inst=llm_inst,
@@ -93,7 +89,6 @@ class ReactAgent(BaseAgent):
                 print(f"Iteration {curr_iter}")
                 print(content)
 
-            # Log to trace file
             self.logging(result=content, no_iter=curr_iter)
 
             final_result = content

@@ -15,8 +15,6 @@ class VectorEntry(BaseModel):
         arbitrary_types_allowed = True
 
 
-# ---- Basic Vector DB ----
-
 class BasicVectorDB:
     def __init__(self, model_instance, db_id: str, model_name: str, usage: str):
         self.model_name = model_name

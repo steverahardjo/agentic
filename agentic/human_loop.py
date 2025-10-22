@@ -1,8 +1,6 @@
-from typing import Dict, List, Union, Optional
-from pydantic import BaseModel
+from typing import List, Optional
 from circuit import Circuit
 from base_agent import BaseAgent
-from memory import MemoryEngine
 # ==== Core Markers ====
 class END:
     """Marker for circuit termination"""

@@ -1,162 +1,185 @@
-from typing import Callable, Dict, Any
-from pydantic import BaseModel, Field
+# Copyright 2025
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""PromptConstructor: ADK-style structured prompt generator with parsing support."""
+
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, List, Union
 from jinja2 import Template
-import inspect
-from mcp.types import Tool
 
-class PromptField(BaseModel):
+
+# ---------------------------------------------------------------------
+# Field representation
+# ---------------------------------------------------------------------
+@dataclass
+class Field:
+    """Represents a single input or output field."""
     name: str
-    type: Any
+    type: Any = str
     desc: str = ""
+    example: Optional[str] = None
 
 
-class PromptConstructor(BaseModel):
+# ---------------------------------------------------------------------
+# PromptConstructor class
+# ---------------------------------------------------------------------
+class PromptConstructor:
     """
-    Basic Constructor to build prompt programmatically, first we declared the name and type (tagger)
-    Input and Output command are build **incr** through functions and add as a (name, type, desc)
-    This can be: a command, an example, etc
+    Construct and render ADK-compliant prompts.
+    Supports FunctionTools and MCPTools through `parse()` and `parse_mcp()`.
 
+    Structure:
+      Role:
+      Inputs:
+      Core Task:
+      Output Requirements:
+      Format: (optional)
+      Resources: (optional)
     """
-    prompt_name: str
-    process_type: str
 
-    # Store input/output fields as dict of PromptField, initialized empty
-    input_fields: Dict[str, PromptField] = Field(default_factory=dict)
-    output_fields: Dict[str, PromptField] = Field(default_factory=dict)
+    def __init__(
+        self,
+        role: str,
+        task_description: str,
+        output_requirements: str,
+        format_description: str = "",
+        input_fields: Optional[Dict[str, Field]] = None,
+        output_fields: Optional[Dict[str, Field]] = None,
+        resource_tools: Optional[Dict[str, Any]] = None,
+        template_str: Optional[str] = None,
+    ):
+        self.role = role
+        self.task_description = task_description
+        self.output_requirements = output_requirements
+        self.format_description = format_description
+        self.input_fields = input_fields or {}
+        self.output_fields = output_fields or {}
+        self.resource_tools = resource_tools or {}
+        self.template_str = template_str
 
-    # You can keep a template string that you build incrementally
-    template_str: str = ""
-
-    def parse_func(self, func: Callable)->None:
-        sig = inspect.signature(func)
-        self.input_fields = {}
-        self.output_fields = {}
-
-            # Inputs
-        for name, param in sig.parameters.items():
-            annotation = param.annotation
-            if annotation is inspect._empty:
-                annotation = str
-            self.input_fields[name] = PromptField(name=name, type=annotation)
-
-            # Output
-        return_annotation = sig.return_annotation
-        if return_annotation is inspect._empty:
-            return_annotation = str
-        self.output_fields["result"] = PromptField(name="result", type=return_annotation)
-    
-    async def parse_mcp(self, tool: Tool):
-        self.input_fields.clear()
-        self.output_fields.clear()
-
-        # Parse inputSchema if present
-        input_schema = getattr(tool, "inputSchema", None)
-        if input_schema and input_schema.get("type") == "object":
-            props = input_schema.get("properties", {})
-            for field_name, field_schema in props.items():
-                pf = self._parse_schema_field(field_name, field_schema)
-                self.input_fields[field_name] = pf
-
-        # Parse outputSchema if present
-        output_schema = getattr(tool, "outputSchema", None)
-        if output_schema:
-            if output_schema.get("type") == "object":
-                props = output_schema.get("properties", {})
-                for field_name, field_schema in props.items():
-                    pf = self._parse_schema_field(field_name, field_schema)
-                    self.output_fields[field_name] = pf
-        else:
-            # Default output
-            self.output_fields["result"] = PromptField(name="result", type=str)
-
-    def giveInput(self, name: str, desc: str = ""):
-        # Add or update input field description, default type is str
-        if name in self.input_fields:
-            self.input_fields[name].desc = desc
-        else:
-            self.input_fields[name] = PromptField(name=name, type=str, desc=desc)
-    
-    def giveOutput(self, name:str, desc:str = ""):
-        # Add or update output field description, default type is str
-        if name in self.output_fields:
-            self.output_fields[name].desc = desc
-        else:
-            self.output_fields[name] = PromptField(name=name, type=str, desc=desc)
-
-    def build_template(self):
+    # -----------------------------------------------------------------
+    # Parsing standard callable-based tools
+    # -----------------------------------------------------------------
+    def parse_func(self, funcs: Optional[List[Any]] = None) -> None:
         """
-        Build a Jinja2 template string from input fields.
-        For example, a simple template could list inputs.
+        Parse standard Python callables into FunctionTool-like entries.
+        Each callable is expected to have a __name__, __doc__, and type hints.
         """
-        lines = [f"Process type: {self.process_type}", f"Prompt name: {self.prompt_name}", ""]
-        lines.append("Inputs:")
-        for f in self.input_fields.values():
-            lines.append(f"- {f.name} ({f.type.__name__}): {f.desc}")
-        lines.append("")
-        lines.append("Outputs:")
-        for f in self.output_fields.values():
-            lines.append(f"- {f.name} ({f.type.__name__}): {f.desc}")
+        if not funcs:
+            return
 
-        # Tools section
-        if self.tools:
-            lines.append("\n" + "*"*50)
-            lines.append("TOOLS AVAILABLE")
-            lines.append("*"*50)
-            for tool_name, tool in self.tools.items():
-                lines.append(f"[Tool] {tool_name} - {tool.description}")
-                for f in tool.fields.values():
-                    lines.append(f"   Param: {f.name} ({f.type.__name__})")
-            lines.append("*"*50)
-            lines.append('Always output tool usage in this format: \n{"func_name": "function_name", "params": [param1, param2]}\nDo not output lists inside lists. Do not write function call syntax.')
+        for fn in funcs:
+            fn_name = getattr(fn, "__name__", "unknown_func")
+            fn_desc = (fn.__doc__ or "").strip()
+            fields = {}
 
+            # Extract type hints for parameters
+            annotations = getattr(fn, "__annotations__", {})
+            for name, typ in annotations.items():
+                if name == "return":
+                    continue
+                fields[name] = Field(name=name, type=typ, desc="")
 
-        # You can customize the template string further or load from external source
-        self.template_str = "\n".join(lines)
-        return self.template_str
+            self.resource_tools[fn_name] = {
+                "name": fn_name,
+                "description": fn_desc,
+                "fields": fields
+            }
 
-    def render_prompt(self, **kwargs) -> str:
+    # -----------------------------------------------------------------
+    # Parsing MCP-based tools
+    # -----------------------------------------------------------------
+    def parse_mcp(self, mcps: Optional[List[Any]] = None) -> None:
         """
-        Render the built template with given input values (kwargs).
+        Parse MCPTools (multi-call protocol tools).
+        Expected attributes: name, description, fields (dict of Field-like items).
         """
-        if not self.template_str:
-            self.build_template()
+        if not mcps:
+            return
 
-        template = Template(self.template_str)
-        return template.render(**kwargs)
-    
-    def load_jpg(self, file_path: str):
+        for mcp in mcps:
+            tool_name = getattr(mcp, "name", "unknown_mcp")
+            tool_desc = getattr(mcp, "description", "")
+            tool_fields = getattr(mcp, "fields", {})
+
+            self.resource_tools[tool_name] = {
+                "name": tool_name,
+                "description": tool_desc,
+                "fields": tool_fields
+            }
+
+    # -----------------------------------------------------------------
+    # Render ADK-structured prompt
+    # -----------------------------------------------------------------
+    def render_prompt(self) -> str:
         """
-        Placeholder for loading a JPG file.
-        This could be extended to actually read and process the image.
+        Render the ADK-structured prompt using Jinja2.
         """
-        template_str = """
-        <!DOCTYPE html>
-        <html>
-        <head><title>Image Example</title></head>
-        <body>
-        <h1>Here is your image:</h1>
-        <img src="{{ image_url }}" alt="Image" />
-        </body>
-        </html>
-        """
-        template = Template(template_str)
-        return template.render(image_url=file_path)
 
-# Example usage:
+        default_template = Template("""
+Role: {{ role }}
 
-def example_function(name: str, age: int) -> bool:
-    """Dummy example function"""
-    return age > 18
+Inputs:
+{% if inputs %}
+{% for field in inputs.values() %}
+{{ field.name }}: {{ field.desc }}{% if field.example %} (e.g., {{ field.example }}){% endif %}
+{{ "{{" }}{{ field.name }}{{ "}}" }}
+{% endfor %}
+{% else %}
+(No structured inputs specified.)
+{% endif %}
 
+Core Task:
+{{ task_description }}
 
-if __name__ == "__main__":
-    pc = PromptConstructor(prompt_name="ExamplePrompt", process_type="CheckAge")
-    pc.parse_func(example_function, input_descs={"name": "Person's name", "age": "Person's age"},
-                  output_descs={"result": "Is person adult?"})
+Output Requirements:
+{{ output_requirements }}
 
-    pc.giveInput("location", "Person's location")
+{% if format_description %}
+Format:
+{{ format_description }}
+{% endif %}
 
-    print(pc.build_template())
+{% if outputs %}
+Expected Outputs:
+{% for field in outputs.values() %}
+- {{ field.name }} ({{ field.type.__name__ }}): {{ field.desc }}
+{% endfor %}
+{% endif %}
 
-    prompt_text = pc.render_prompt(name="Steve", age=25, location="Malaysia")
-    print("\nRendered Prompt:\n", prompt_text)
+{% if tools %}
+Resources:
+{% for tool in tools.values() %}
+- {{ tool.name }}: {{ tool.description }}
+  {% if tool.fields %}
+  Parameters:
+  {% for field in tool.fields.values() %}
+    - {{ field.name }} ({{ field.type.__name__ }}): {{ field.desc }}
+  {% endfor %}
+  {% endif %}
+{% endfor %}
+{% endif %}
+""")
+
+        tmpl = Template(self.template_str) if self.template_str else default_template
+
+        return tmpl.render(
+            role=self.role,
+            inputs=self.input_fields,
+            outputs=self.output_fields,
+            task_description=self.task_description,
+            output_requirements=self.output_requirements,
+            format_description=self.format_description,
+            tools=self.resource_tools
+        ).strip()

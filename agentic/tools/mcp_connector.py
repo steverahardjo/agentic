@@ -1,15 +1,5 @@
-import asyncio
-from typing import Optional, Union, List
-from fastmcp import Client, Tool, Types
-from mcp.types import Tool, Prompt, Resource
-
-class MCPClient:
-    """
-    MCP Client adapter to convert MCP into a tool usable
-    within an agentic agent instance.
-
-    Inspired by Google ADK and DSPy MCP integrations.
-    """
+from typing import Union
+from fastmcp import Client
 
 class MCPConnector:
     def __init__(self, mcp_client_name: str, url_or_config: Union[str, dict]):        
@@ -38,30 +28,27 @@ class MCPConnector:
         except Exception as e:
             print(f"[MCPClient] Ping failed: {e}")
             return False
-        
-    async def lists(self) -> List[Union[Tool, Resource, Prompt]]:
+    
+    def lists(self):
         """
         Fetch all Tools, Resources, and Prompts from FastMCP.
         Skips any items that are malformed.
         """
-        async with self.client:
-            all_items: List[Union[Tool, Resource, Prompt]] = []
-            try:
-                tools = await self.client.list_tools()
-                all_items.extend([t for t in tools if isinstance(t, Tool)])
-            except Exception:
-                pass
-            try:
-                resources = await self.client.list_resources()
-                all_items.extend([r for r in resources if isinstance(r, Resource)])
-            except Exception:
-                pass
-            try:
-                prompts = await self.client.list_prompts()
-                all_items.extend([p for p in prompts if isinstance(p, Prompt)])
-            except Exception:
-                pass
-
+        all_items= []
+        try:
+            tools = self.client.list_tools()
+            all_items.extend([t for t in tools])
+        except Exception:
+            pass
+        try:
+            resources =self.client.list_resources()
+            all_items.extend([r for r in resources])
+        except Exception:
+            pass
+        try:
+            prompts = self.client.list_prompts()
+            all_items.extend([p for p in prompts])
+        except:
             return all_items
 
 
@@ -74,16 +61,6 @@ class MCPConnector:
         try:
             result = await self.client.call(tool_name, **kwargs)
             return result
-        except Exception as e:
+        except Exception:
             return None
         
-async def main():
-    # Create client against the remote MCP server
-    client = Client("https://mcp.exa.ai/mcp")
-
-    async with client:
-        # you can inspect available tools
-        tools = await client.list_tools()
-
-        # Call a tool (depending on what Exa offers, e.g. "web_search_exa")
-        print(tools)

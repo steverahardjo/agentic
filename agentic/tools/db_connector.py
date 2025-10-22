@@ -1,10 +1,5 @@
 
-import sqlparse
-from datetime import datetime
 from typing import Any, Dict, List, Optional
-
-# Local abstract interface
-from agentic.tools.mcp_connector import BaseConnector
 
 try:
     from firebase_admin import credentials, firestore
@@ -23,7 +18,7 @@ except Exception:
     InstalledAppFlow = None
 
 
-class FirebaseConnector(BaseConnector):
+class FirebaseConnector:
     def __init__(self, cert_path: Optional[str] = None):
         if firebase_admin is None:
             raise RuntimeError("firebase_admin is not available in this environment")
@@ -100,8 +95,6 @@ class GcalendarConnector:
             .execute()
         )
         return events_result
-    
-    def push_
 
 class PostGresConnector:
     def __init__(self):

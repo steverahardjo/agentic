@@ -1,16 +1,11 @@
-from agentic.prompt_constructor import PromptConstructor
 from llm.LLM import OpenAIClient
-from agentic.tools.searcher import agent_webscraping
 from agentic.tools.code_runner import CodeRunner
 from agentic.tools.db_connector import GcalendarConnector
-
 from agentic.memory import InMemory
-from agentic.react_agent import ReactAgent, ReactPrompt
-from agentic.base_agent import BaseAgent
-OPENAI_API_KEY = "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"
+from agentic.preset_agents.react_agent import ReactPrompt
 coder= CodeRunner(3)
 calendar = GcalendarConnector("token.json")
-oai = OpenAIClient("oai", "", "gpt-4o", OPENAI_API_KEY)
+oai = OpenAIClient("oai", "", "gpt-4o")
 inMem = InMemory("inmemory_1", "webscraper")
 
 if __name__ == "__main__":
@@ -23,18 +18,4 @@ if __name__ == "__main__":
         process_type="ExtractTask",
         prompt_name="extract task"
     )
-    webscraper_ori = BaseAgent(
-        name="webscraper_2",
-        description= "Summarize what I'm asking in 100 words",
-        funcs = [agent_webscraping, addition, calendar.fetch_calendarPoint],
-        prompt= pc
-    )
-    webscraper=ReactAgent(
-        name="webscraper",
-        memory=inMem,
-        description="Summarize what I'm asking in 100 words",
-        funcs=[agent_webscraping, addition, calendar.fetch_calendarPoint],
-    )
-    question="Using this link,  https://zig.guide/language-basics/structs/, Teach me about struct of zig in 100 words"
-    print(webscraper.run(question, oai, 0, True))
-    #print(agent_webscraping("https://en.wikipedia.org/wiki/Indonesian_National_Revolution"))
+    print(pc.build_template)
